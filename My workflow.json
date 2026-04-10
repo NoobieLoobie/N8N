@@ -1,0 +1,680 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "patient_intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4a97081d-9cde-47bf-8852-f7f501d0bb69",
+      "name": "Webhook",
+      "webhookId": "96e63938-058e-429c-b207-09100b5d8afe"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"patient_name\": \"{{ $json.body.patient_name }}\",\n  \"contact_no\": \"{{ $json.body.contact_no }}\",\n  \"symptoms\": \"{{ $json.body.symptoms }}\",\n  \"medical_history\": \"{{ $json.body.medical_history || 'None provided' }}\",\n  \"input_type\": \"{{ $json.body.input_type }}\",\n  \"current_time\": \"{{ new Date().toLocaleTimeString('en-BD', {timeZone:'Asia/Dhaka', hour:'2-digit', minute:'2-digit'}) }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "2f1c9eec-a426-45cb-b809-ab366cf59595",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "147a704a-2277-4405-8777-07a67b908fe1",
+              "leftValue": "={{ $json.input_type }}",
+              "rightValue": "voice",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "3e242cd9-0745-46e0-9292-deda2d93229d",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/audio/transcriptions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "whisper-1"
+            },
+            {
+              "name": "language",
+              "value": "bn"
+            },
+            {
+              "name": "=file",
+              "value": "={{ $json.body.audio_file }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        624,
+        -96
+      ],
+      "id": "0e6abedd-8317-482d-86f9-de28ec025c6f",
+      "name": "HTTP Request",
+      "credentials": {
+        "openAiApi": {
+          "id": "KjnpluLoge1DVjlH",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n   {{$json.text}} \n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        832,
+        -96
+      ],
+      "id": "49d0a23b-994f-4f45-a2a9-e94459073a20",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1024,
+        -16
+      ],
+      "id": "00b96cbc-bb11-48c2-9806-78de3dbfeed7",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1/models/gemini-1.0-pro:generateContent?key=YOUR_API_KEY",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"role\": \"user\",\n      \"parts\": [\n        {\n          \"text\": \"You are a medical triage assistant for a public hospital in Bangladesh. Your job is to analyze patient symptoms and assign them an appointment.\\n\\nINPUTS you will receive:\\n- patient_name\\n- contact_no\\n- symptoms\\n- medical_history\\n- current_time\\n\\nTASK:\\n1. Assign department and doctor:\\n   Dr. Rahim (Room 101) — General Medicine\\n   Dr. Sultana (Room 205) — Cardiology\\n   Dr. Hossain (Room 312) — Orthopedics\\n   Dr. Begum (Room 108) — Gynecology\\n   Dr. Islam (Room 220) — Pediatrics\\n   Dr. Khan (Room 315) — Neurology\\n   Emergency Room (Room 001) — Critical only\\n\\n2. Calculate appointment window based on current time.\\n\\nRespond ONLY in valid JSON.\\n\\n--- INPUT ---\\nPatient Name: {{ $json.patient_name }}\\nContact: {{ $json.contact_no }}\\nSymptoms: {{ $json.symptoms }}\\nMedical History: {{ $json.medical_history }}\\nCurrent Time: {{ $json.current_time }}\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"maxOutputTokens\": 20,\n    \"temperature\": 0.2\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1232,
+        -16
+      ],
+      "id": "81356b8c-290b-4b7b-a5a1-e686e24d1379",
+      "name": "HTTP Request1",
+      "credentials": {
+        "anthropicApi": {
+          "id": "mUN56YoooRWlgGkk",
+          "name": "Anthropic account"
+        },
+        "openAiApi": {
+          "id": "Okg4Lk5DhrU9NDjt",
+          "name": "OpenAI account 2"
+        },
+        "googlePalmApi": {
+          "id": "wz7gVSyQwQWFry7V",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"triage_result\": {{ JSON.parse($json.content[0].text.replace(/```json|```/g, '').trim()) }}\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1440,
+        -16
+      ],
+      "id": "3ba4589b-8d3f-41ab-b516-e9727747248e",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appcb0UMappMlLr2e",
+          "mode": "list",
+          "cachedResultName": "Hospital Queue",
+          "cachedResultUrl": "https://airtable.com/appcb0UMappMlLr2e"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblGZxutfhJE4OFxG",
+          "mode": "list",
+          "cachedResultName": "Patients",
+          "cachedResultUrl": "https://airtable.com/appcb0UMappMlLr2e/tblGZxutfhJE4OFxG"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Patient Name": "={{ $json.patient_name }}",
+            "Contact Number": "={{ $json.contact_no }}",
+            "Symptoms (Bengali)": "={{ $json.symptoms_bengali}}",
+            "Symptoms (English)": "={{ $json.symptoms}}",
+            "Assigned Doctor": "={{ $json.triage_result.doctor_name }}",
+            "Assignment Status": "Assigned",
+            "Matching Specialty": "={{ $json.triage_result.department }}",
+            "Assignment Notes": "={{ $json.triage_result.reasoning }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Patient Name",
+              "displayName": "Patient Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Contact Number",
+              "displayName": "Contact Number",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Symptoms (Bengali)",
+              "displayName": "Symptoms (Bengali)",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Symptoms (English)",
+              "displayName": "Symptoms (English)",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Assigned Doctor",
+              "displayName": "Assigned Doctor",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Assignment Timestamp",
+              "displayName": "Assignment Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Assignment Status",
+              "displayName": "Assignment Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Assigned",
+                  "value": "Assigned"
+                },
+                {
+                  "name": "Pending",
+                  "value": "Pending"
+                },
+                {
+                  "name": "Unassigned",
+                  "value": "Unassigned"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Matching Specialty",
+              "displayName": "Matching Specialty",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Cardiology",
+                  "value": "Cardiology"
+                },
+                {
+                  "name": "General Medicine",
+                  "value": "General Medicine"
+                },
+                {
+                  "name": "Orthopedics",
+                  "value": "Orthopedics"
+                },
+                {
+                  "name": "Pediatrics",
+                  "value": "Pediatrics"
+                },
+                {
+                  "name": "Gynecology",
+                  "value": "Gynecology"
+                },
+                {
+                  "name": "Surgery",
+                  "value": "Surgery"
+                },
+                {
+                  "name": "Neurology",
+                  "value": "Neurology"
+                },
+                {
+                  "name": "Oncology",
+                  "value": "Oncology"
+                },
+                {
+                  "name": "Dermatology",
+                  "value": "Dermatology"
+                },
+                {
+                  "name": "ENT",
+                  "value": "ENT"
+                },
+                {
+                  "name": "Psychiatry",
+                  "value": "Psychiatry"
+                },
+                {
+                  "name": "Ophthalmology",
+                  "value": "Ophthalmology"
+                },
+                {
+                  "name": "Other",
+                  "value": "Other"
+                },
+                {
+                  "name": "Gastroenterology",
+                  "value": "Gastroenterology"
+                },
+                {
+                  "name": "Endocrinology",
+                  "value": "Endocrinology"
+                },
+                {
+                  "name": "Rheumatology",
+                  "value": "Rheumatology"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Assignment Notes",
+              "displayName": "Assignment Notes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Follow-up Date",
+              "displayName": "Follow-up Date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        2048,
+        0
+      ],
+      "id": "dc29ee4c-3aa5-41ae-910f-568859f28965",
+      "name": "Create a record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "QEJ0c1UoaDFHktRF",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "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"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "={\n  \"model\": \"claude-haiku-4-5-20251001\",\n  \"max_tokens\": 500,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Translate this to Bengali script only, no explanation, just the translation: {{ $json.symptoms }}\"\n    }\n  ]\n}",
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1632,
+        -16
+      ],
+      "id": "640b1741-cb99-4def-b4e2-0cb1035df013",
+      "name": "HTTP Request2"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"symptoms_bengali\": \"{{ $json.content[0].text }}\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1840,
+        -16
+      ],
+      "id": "eef7a56f-66fa-4c6c-ae14-f736da323c42",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.elevenlabs.io/v1/text-to-speech/VOICE_ID",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xi-api-key",
+              "value": "sk_9b0c1cc3bbde9529b575bb7db85d04277d3791d134521f9e"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "={\n  \"text\": \"{{ $json.triage_result.bengali_message }}\",\n  \"model_id\": \"eleven_multilingual_v2\",\n  \"voice_settings\": { \"stability\": 0.5, \"similarity_boost\": 0.75 }\n}",
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2224,
+        -128
+      ],
+      "id": "d114b301-ca94-4b5c-a72b-1b2b7092a966",
+      "name": "HTTP Request3"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  {\n  \"success\": true,\n  \"patient_name\": \"{{ $json.patient_name }}\",\n  \"doctor\": \"{{ $json.triage_result.doctor_name }}\",\n  \"room\": \"{{ $json.triage_result.room_number }}\",\n  \"time_from\": \"{{ $json.triage_result.appointment_window_start }}\",\n  \"time_to\": \"{{ $json.triage_result.appointment_window_end }}\",\n  \"priority\": \"{{ $json.triage_result.priority }}\",\n  \"department\": \"{{ $json.triage_result.department }}\",\n  \"reasoning\": \"{{ $json.triage_result.reasoning }}\"\n\"audio\": \"{{ $json.audio }}\"\n}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2480,
+        16
+      ],
+      "id": "f58591cf-0856-4d4d-b374-cd90b96e12ec",
+      "name": "Respond to Webhook1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP Request3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "Create a record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a record": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request3": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "bf79b105-9639-487f-81f1-c7b4c53cafd2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "804f349ad9e0348d8f3c1d43fcedb52872c3bc39e1bf5f03336639e302b06611"
+  },
+  "id": "a38xzYtXcV9j2lOP",
+  "tags": []
+}
